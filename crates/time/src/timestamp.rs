@@ -49,6 +49,44 @@ impl TryFrom<String> for Timestamp {
     }
 }
 
+#[cfg(feature = "prost")]
+impl TryFrom<Timestamp> for prost_wkt_types::Timestamp {
+    type Error = ValidationError;
+
+    fn try_from(value: Timestamp) -> Result<Self, Self::Error> {
+        let nanos: i32 = value
+            .0
+            .timestamp_subsec_nanos()
+            .try_into()
+            .map_err(|error| ValidationError::InvalidFormat {
+                message: format!("invalid timestamp nanos: {error:?}"),
+            })?;
+
+        Ok(Self {
+            seconds: value.0.timestamp(),
+            nanos,
+        })
+    }
+}
+
+#[cfg(feature = "prost")]
+impl TryFrom<prost_wkt_types::Timestamp> for Timestamp {
+    type Error = ValidationError;
+
+    fn try_from(value: prost_wkt_types::Timestamp) -> Result<Self, Self::Error> {
+        let nsec: u32 = value
+            .nanos
+            .try_into()
+            .map_err(|error| ValidationError::InvalidFormat {
+                message: format!("invalid timestamp nsec: {error:?}"),
+            })?;
+        let timestamp = DateTime::from_timestamp(value.seconds, nsec).ok_or_else(|| {
+            ValidationError::new_invalid_format("invalid timestamp seconds and nanos")
+        })?;
+        Ok(Self(timestamp))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use serde_json::{json, Value};

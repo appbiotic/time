@@ -4,12 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [features]
-default = ["serde"]
+default = ["prost", "serde"]
 serde = ["serde/std", "serde_with/macros"]
+prost = ["dep:prost-wkt-types"]
 
 [dependencies]
 appbiotic-error = { git = "https://github.com/appbiotic/error", branch = "dev-0.1" }
 chrono = { version = "0.4.39", features = ["std"] }
+prost-wkt-types = { version = "0.6.0", optional = true }
 serde = { version = "1.0.217", optional = true }
 serde_with = { version = "3.12.0", optional = true }
 
