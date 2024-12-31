@@ -1,0 +1,47 @@
+name: build
+
+on: [push, pull_request]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        rust-toolchain: [1.82.0]
+        runs-on: ["ubuntu-24.04", "ubuntu-24.04-arm64", "macos-15"]
+    runs-on: ${{ matrix.runs-on }}
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: sccache
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install toolchain
+        uses: dtolnay/rust-toolchain@315e265cd78dad1e1dcf3a5074f6d6c47029d5aa
+        with:
+          toolchain: ${{ matrix.rust-toolchain }}
+          components: rustfmt, clippy
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.7
+
+      - name: Run cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: Run cargo test
+        run: cargo test --verbose --lib --bins --tests --no-fail-fast
+
+      # NOTE: Need to run doc tests separately
+      # SEE https://github.com/rust-lang/cargo/issues/6669
+      - name: Run cargo doc test
+        run: cargo test --verbose --doc
+
+      - name: Run cargo clippy
+        run: |
+          [[ ${{ matrix.rust-toolchain }} != 1.82.0 ]] || cargo clippy --all-targets --all -- --allow=unknown-lints --deny=warnings
